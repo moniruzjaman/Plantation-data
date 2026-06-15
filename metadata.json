@@ -1,8 +1,10 @@
 {
   "name": "Plantation_kurigram",
-  "description": "To get realtime plantation update information along with the geo location ",
+  "description": "To collect and sync real-time plantation update information with offline state, dual language modes, geolocation mapping, and KoBoToolbox XLS / Server endpoint utilities.",
   "requestFramePermissions": [
     "geolocation"
   ],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

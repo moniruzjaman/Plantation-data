@@ -9,7 +9,7 @@ export default function App() {
       <iframe 
         src="legacy-nursery.html" 
         style={{ display: 'block', width: '100%', height: '100%', border: 'none' }}
-        title="Nursery Form" 
+        title="Plantation Form" 
         allow="geolocation"
       />
     </div>
