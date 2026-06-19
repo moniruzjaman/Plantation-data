@@ -15,6 +15,7 @@ setTimeout(function(){document.getElementById("eDistrict").value=s.district;onEd
 document.getElementById("eUpazila").value=s.upazila||"";
 document.getElementById("eNursery").value=s.nurseryName;document.getElementById("eMobile").value=s.mobile;document.getElementById("eAddress").value=s.address||"";document.getElementById("eGeo").value=s.geoLocation||"";
 document.getElementById("eCaretakerName").value=s.caretakerName||"";document.getElementById("eCaretakerMobile").value=s.caretakerMobile||"";
+document.getElementById("eRemarks").value=s.remarks||"";
 document.getElementById("ePlantingDate").value=s.plantingDate||(s.submittedAt?s.submittedAt.slice(0, 10):new Date().toISOString().slice(0, 10));
 document.getElementById("editSeedlingSections").innerHTML=buildSeedlingSections("editSeedlingSections",s);document.getElementById("editModal").classList.remove("hidden")},60);
 };
@@ -28,7 +29,7 @@ var upEl=document.getElementById("eUpazila"),upVal=upEl&&upEl.value.trim();
 if(!upVal||!document.getElementById("eRegion").value||!document.getElementById("eDistrict").value||!document.getElementById("eNursery").value){alert("সকল প্রয়োজনীয় তথ্য পূরণ করুন");return}
 var subs=getSubmissions(),idx=subs.findIndex(function(s){return s.id===document.getElementById("eId").value});
 if(idx===-1){closeEditModal();return}
-subs[idx]=Object.assign({},subs[idx],{region:document.getElementById("eRegion").value,district:document.getElementById("eDistrict").value,upazila:upVal,nurseryName:document.getElementById("eNursery").value.trim(),mobile:mob,caretakerName:document.getElementById("eCaretakerName").value.trim(),caretakerMobile:careMob,address:document.getElementById("eAddress").value.trim(),geoLocation:document.getElementById("eGeo").value.trim(),plantingDate:document.getElementById("ePlantingDate").value.trim()},collectSeedlingsFromDOM("editSeedlingSections"));
+subs[idx]=Object.assign({},subs[idx],{region:document.getElementById("eRegion").value,district:document.getElementById("eDistrict").value,upazila:upVal,nurseryName:document.getElementById("eNursery").value.trim(),mobile:mob,caretakerName:document.getElementById("eCaretakerName").value.trim(),caretakerMobile:careMob,address:document.getElementById("eAddress").value.trim(),geoLocation:document.getElementById("eGeo").value.trim(),plantingDate:document.getElementById("ePlantingDate").value.trim(),officerName:document.getElementById("eCaretakerName").value.trim(),remarks:document.getElementById("eRemarks").value.trim()},collectSeedlingsFromDOM("editSeedlingSections"));
 saveSubmissions(subs);closeEditModal();renderAdminTable();
 });
 window.adminDelete=function(id){if(!confirm("আপনি কি নিশ্চিত?"))return;saveSubmissions(getSubmissions().filter(function(s){return s.id!==id}));renderAdminTable()};

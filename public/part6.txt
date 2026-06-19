@@ -1,12 +1,70 @@
 
 // ── Geo Location ──
+window.reverseGeocode = function(lat, lng, targetId) {
+  var addrField = document.getElementById(targetId);
+  if (!addrField) return;
+  addrField.placeholder = "🌐 জিপিএস থেকে ঠিকানা লোড হচ্ছে...";
+  
+  var url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lng + "&accept-language=bn,en";
+  fetch(url, {
+    headers: {
+      "User-Agent": "PlantationTracker/1.0"
+    }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data && data.display_name) {
+      var addressStr = data.display_name;
+      if (data.address) {
+        var parts = [];
+        var a = data.address;
+        
+        // Match standard local/regional divisions
+        var village = a.village || a.suburb || a.neighbourhood || a.hamlet || a.road || "";
+        var upazilaLoc = a.county || a.subdistrict || "";
+        var districtLoc = a.state_district || a.district || a.city || "";
+        var postOffice = a.postcode ? "পোস্টকোড: " + a.postcode : "";
+        
+        if (village) parts.push(village);
+        if (upazilaLoc) parts.push(upazilaLoc);
+        if (districtLoc) parts.push(districtLoc);
+        if (postOffice) parts.push(postOffice);
+        
+        if (parts.length > 0) {
+          addressStr = parts.join(", ");
+        }
+      }
+      addrField.value = addressStr;
+    }
+  })
+  .catch(function(err) {
+    console.error("Geocoding failed:", err);
+  });
+};
+
+window.onGeoLocationChange = function(inputEl, targetAddressId) {
+  var val = inputEl.value.trim();
+  var m = /^\s*(-?\d+(?:\.\d+)?)\s*[\s,;]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(val);
+  if (m) {
+    var lat = parseFloat(m[1]).toFixed(6);
+    var lng = parseFloat(m[2]).toFixed(6);
+    window.reverseGeocode(lat, lng, targetAddressId);
+  }
+};
+
 window.fetchGeoLocation=function(){
 try{
 var geoField=document.getElementById("fGeo"),geoStatus=document.getElementById("geoStatus"),geoStatusText=document.getElementById("geoStatusText"),geoBtnText=document.getElementById("geoBtnText");
 if(!navigator.geolocation){geoStatusText.textContent="⚠️ আপনার ব্রাউজার লোকেশন সাপোর্ট করে না।";geoStatus.classList.remove("hidden");return}
 geoBtnText.textContent="অপেক্ষা...";
 geoStatusText.textContent="📡 লোকেশন খোঁজা হচ্ছে...";geoStatus.classList.remove("hidden");geoStatus.style.color="#2563eb";
-navigator.geolocation.getCurrentPosition(function(pos){var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);geoField.value=lat+", "+lng;geoStatusText.textContent="✅ লোকেশন সফলভাবে পাওয়া গেছে";geoStatus.style.color="#15803d";geoBtnText.textContent="আপডেট";setTimeout(function(){geoStatus.classList.add("hidden")},3000)},function(err){var msg="";switch(err.code){case 1:msg="❌ লোকেশন অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।";break;case 2:msg="⚠️ লোকেশন পাওয়া যায়নি।";break;case 3:msg="⏱️ লোকেশন খোঁজার সময় শেষ হয়ে গেছে।";break;default:msg="⚠️ অজানা ত্রুটি হয়েছে।"}geoStatusText.textContent=msg;geoStatus.style.color="#dc2626";geoBtnText.textContent="আবার চেষ্টা"},{enableHighAccuracy:true,timeout:10000,maximumAge:300000});
+navigator.geolocation.getCurrentPosition(function(pos){
+var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
+geoField.value=lat+", "+lng;
+geoStatusText.textContent="✅ লোকেশন সফলভাবে পাওয়া গেছে";geoStatus.style.color="#15803d";geoBtnText.textContent="আপডেট";
+setTimeout(function(){geoStatus.classList.add("hidden")},3000);
+window.reverseGeocode(lat, lng, "fAddress");
+},function(err){var msg="";switch(err.code){case 1:msg="❌ লোকেশন অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।";break;case 2:msg="⚠️ লোকেশন পাওয়া যায়নি।";break;case 3:msg="⏱️ লোকেশন খোঁজার সময় শেষ হয়ে গেছে।";break;default:msg="⚠️ অজানা ত্রুটি হয়েছে।"}geoStatusText.textContent=msg;geoStatus.style.color="#dc2626";geoBtnText.textContent="আবার চেষ্টা"},{enableHighAccuracy:true,timeout:10000,maximumAge:300000});
 }catch(e){console.error("Geo error:",e)}
 };
 
@@ -33,6 +91,7 @@ document.getElementById("fDistrict").value=s.district;onFormDistrictChange();
 document.getElementById("fUpazila").value=s.upazila||"";
 document.getElementById("fNursery").value=s.nurseryName;document.getElementById("fMobile").value=s.mobile;document.getElementById("fAddress").value=s.address||"";document.getElementById("fGeo").value=s.geoLocation||"";
 document.getElementById("fCaretakerName").value=s.caretakerName||"";document.getElementById("fCaretakerMobile").value=s.caretakerMobile||"";
+document.getElementById("fRemarks").value=s.remarks||"";
 document.getElementById("fPlantingDate").value=s.plantingDate||(s.submittedAt?s.submittedAt.slice(0, 10):new Date().toISOString().slice(0, 10));
 document.getElementById("seedlingSections").innerHTML=buildSeedlingSections("seedlingSections",s);
 document.getElementById("tab-form").scrollIntoView({behavior:"smooth"});
@@ -47,6 +106,23 @@ var r=document.getElementById(prefix+"Region")&&document.getElementById(prefix+"
 var d=document.getElementById(prefix+"District")&&document.getElementById(prefix+"District").value;
 return getSubmissions().filter(function(s){if(r&&s.region!==r)return false;if(d&&s.district!==d)return false;return true});
 }
+window.currentDashboardViewMode = "gov";
+window.setDashboardViewMode = function(mode) {
+  window.currentDashboardViewMode = mode;
+  var btnGov = document.getElementById("btnViewGov");
+  var btnGen = document.getElementById("btnViewGen");
+  if(btnGov && btnGen) {
+    if(mode === "gov") {
+      btnGov.className = "px-3 py-1 text-xs font-semibold rounded-md bg-white text-green-700 shadow-sm transition-all focus:outline-none cursor-pointer";
+      btnGen.className = "px-3 py-1 text-xs font-semibold rounded-md text-gray-600 hover:text-green-700 transition-all focus:outline-none cursor-pointer";
+    } else {
+      btnGov.className = "px-3 py-1 text-xs font-semibold rounded-md text-gray-600 hover:text-green-700 transition-all focus:outline-none cursor-pointer";
+      btnGen.className = "px-3 py-1 text-xs font-semibold rounded-md bg-white text-green-700 shadow-sm transition-all focus:outline-none cursor-pointer";
+    }
+  }
+  window.renderDashboard();
+};
+
 window.renderDashboard=function(){
 try{
 var subs=getFiltered("dash");var totalS=0,totalG=0,nurs=new Set();
@@ -63,9 +139,111 @@ if(chartCat)chartCat.destroy();
 chartCat=new Chart(document.getElementById("chartCategory"),{type:"doughnut",data:{labels:CATEGORIES.map(function(c){return c.label}),datasets:[{data:catC,backgroundColor:CATEGORIES.map(function(c){return c.color})}]},options:{responsive:true,plugins:{legend:{position:"bottom"}}}});
 }
 
-var tb=document.getElementById("dashTableBody"),nd=document.getElementById("dashNoData");
-if(!subs.length){tb.innerHTML="";nd.classList.remove("hidden");return}nd.classList.add("hidden");
-tb.innerHTML=subs.map(function(s,i){var c=countSeedlings(s);var pD = s.plantingDate ? new Date(s.plantingDate).toLocaleDateString("bn-BD") : new Date(s.submittedAt).toLocaleDateString("bn-BD");return '<tr class="border-b" style="font-size:12px"><td class="px-2 py-2">'+(i+1).toLocaleString("bn-BD")+'</td><td class="px-2 py-2">'+s.region+'</td><td class="px-2 py-2">'+s.district+'</td><td class="px-2 py-2">'+s.upazila+'</td><td class="px-2 py-2 font-semibold">'+s.nurseryName+'</td><td class="px-2 py-2">'+s.mobile+'</td><td class="px-2 py-2" style="color:#ea580c">'+c.fruit+'</td><td class="px-2 py-2" style="color:#047857">'+c.forest+'</td><td class="px-2 py-2" style="color:#1d4ed8">'+c.medicinal+'</td><td class="px-2 py-2 text-gray-500">'+pD+'</td></tr>'}).join("");
+var th=document.getElementById("dashTableHead"),tb=document.getElementById("dashTableBody"),nd=document.getElementById("dashNoData");
+if(!subs.length){if(tb)tb.innerHTML="";if(th)th.innerHTML="";if(nd)nd.classList.remove("hidden");return}
+if(nd)nd.classList.add("hidden");
+
+if(!window.currentDashboardViewMode) window.currentDashboardViewMode = "gov";
+
+if(window.currentDashboardViewMode === "gov") {
+  if (th) {
+    th.innerHTML = '<tr style="background:#0284c7;color:#ffffff">' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">ক্র. নং</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">জেলা, উপজেলা ও গ্রাম/অবস্থান</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">রোপণকৃত প্রজাতির নাম</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">রোপণকৃত বৃক্ষের সংখ্যা</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">বৃক্ষরোপণের তারিখ</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">সুনির্দিষ্ট এলাকা (জিওغرافিক্যাল কোঅর্ডিনেটসহ)</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">তদারককারী / মনিটরিং অফিসার ও ফোন</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">মন্তব্য</th>' +
+      '</tr>';
+  }
+  
+  var rowsHtml = [];
+  var rowIndex = 1;
+  subs.forEach(function(s) {
+    var pD = s.plantingDate ? new Date(s.plantingDate).toLocaleDateString("bn-BD") : (s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("bn-BD") : "");
+    var fullLocation = "জেলা: " + s.district + ", উপজেলা: " + s.upazila + (s.address ? ", গ্রাম/অবস্থান: " + s.address : "");
+    var geoLoc = s.geoLocation || "কোনো কোঅর্ডিনেট নেই";
+    
+    var caretakerInfo = "";
+    if (s.caretakerName) {
+      caretakerInfo = s.caretakerName + (s.caretakerMobile ? " (" + s.caretakerMobile + ")" : "");
+    } else {
+      caretakerInfo = s.nurseryName + (s.mobile ? " (" + s.mobile + ")" : "");
+    }
+    
+    var remarks = s.remarks || "";
+    var has = (s.fruitSeedlings && s.fruitSeedlings.length || 0) + 
+              (s.forestSeedlings && s.forestSeedlings.length || 0) + 
+              (s.medicinalSeedlings && s.medicinalSeedlings.length || 0);
+
+    if (!has) {
+      rowsHtml.push('<tr class="border-b hover:bg-gray-50 transition" style="font-size:12px">' +
+        '<td class="px-2 py-2">' + rowIndex.toLocaleString("bn-BD") + '</td>' +
+        '<td class="px-2 py-2">' + fullLocation + '</td>' +
+        '<td class="px-2 py-2 text-gray-400 font-medium">কোনো চারা রোপণ বিবরণী নেই</td>' +
+        '<td class="px-2 py-2">০</td>' +
+        '<td class="px-2 py-2">' + pD + '</td>' +
+        '<td class="px-2 py-2 font-mono text-cyan-700">' + geoLoc + '</td>' +
+        '<td class="px-2 py-2 font-semibold text-sky-800">' + caretakerInfo + '</td>' +
+        '<td class="px-2 py-2 text-gray-500">' + remarks + '</td>' +
+        '</tr>');
+      rowIndex++;
+    } else {
+      CATEGORIES.forEach(function(cat) {
+        (s[cat.key] || []).forEach(function(e) {
+          var countVal = (parseInt(e.count) || 0) + (parseInt(e.graftingCount) || 0);
+          rowsHtml.push('<tr class="border-b hover:bg-gray-50 transition" style="font-size:12px">' +
+            '<td class="px-2 py-2">' + rowIndex.toLocaleString("bn-BD") + '</td>' +
+            '<td class="px-2 py-2">' + fullLocation + '</td>' +
+            '<td class="px-2 py-2 font-semibold text-gray-800">' + (e.name || "নামহীন প্রজাতি") + ' <span class="text-xs text-gray-400">(' + cat.label + ')</span></td>' +
+            '<td class="px-2 py-2 font-bold text-green-700">' + countVal.toLocaleString("bn-BD") + '</td>' +
+            '<td class="px-2 py-2">' + pD + '</td>' +
+            '<td class="px-2 py-2 font-mono text-cyan-700">' + geoLoc + '</td>' +
+            '<td class="px-2 py-2 font-semibold text-sky-800">' + caretakerInfo + '</td>' +
+            '<td class="px-2 py-2 text-gray-500">' + remarks + '</td>' +
+            '</tr>');
+          rowIndex++;
+        });
+      });
+    }
+  });
+  if (tb) tb.innerHTML = rowsHtml.join("");
+} else {
+  if (th) {
+    th.innerHTML = '<tr style="background:#f0fdf4;color:#166534">' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">ক্রম</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">অঞ্চল</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">জেলা</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">উপজেলা</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">রোপণকারীর নাম</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">মোবাইল</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap" style="color:#b45309">ফলদ</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap" style="color:#047857">বনজ</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap" style="color:#1d4ed8">ঔষধি</th>' +
+      '<th class="px-2 py-2 text-left whitespace-nowrap">রোপণের তারিখ</th>' +
+      '</tr>';
+  }
+  if (tb) {
+    tb.innerHTML=subs.map(function(s,i){
+      var c=countSeedlings(s);
+      var pD = s.plantingDate ? new Date(s.plantingDate).toLocaleDateString("bn-BD") : (s.submittedAt ? new Date(s.submittedAt).toLocaleDateString("bn-BD") : "");
+      return '<tr class="border-b" style="font-size:12px">' +
+        '<td class="px-2 py-2">'+(i+1).toLocaleString("bn-BD")+'</td>' +
+        '<td class="px-2 py-2">'+s.region+'</td>' +
+        '<td class="px-2 py-2">'+s.district+'</td>' +
+        '<td class="px-2 py-2">'+s.upazila+'</td>' +
+        '<td class="px-2 py-2 font-semibold">'+s.nurseryName+'</td>' +
+        '<td class="px-2 py-2">'+s.mobile+'</td>' +
+        '<td class="px-2 py-2 font-semibold" style="color:#ea580c">'+c.fruit.toLocaleString("bn-BD")+'</td>' +
+        '<td class="px-2 py-2 font-semibold" style="color:#047857">'+c.forest.toLocaleString("bn-BD")+'</td>' +
+        '<td class="px-2 py-2 font-semibold" style="color:#1d4ed8">'+c.medicinal.toLocaleString("bn-BD")+'</td>' +
+        '<td class="px-2 py-2 text-gray-500">'+pD+'</td>' +
+        '</tr>';
+    }).join("");
+  }
+}
 }catch(err){console.error("Dashboard error:",err)}
 };
 
@@ -378,5 +556,102 @@ window.apiSyncNow = function() {
     writeToSyncLog("[SOLUTION] You can copy the ready-to-use JSON payload printed below to insert directly into KoBo or Server import tools manually:", "success");
     writeToSyncLog(JSON.stringify(payload, null, 2), "default");
   });
+};
+
+// ── Government Template Specialized Export ──
+window.exportToGovExcel = function(prefix) {
+  if (typeof XLSX === "undefined") {
+    showBanner("errorBanner", "Excel লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ নিশ্চিত করুন।");
+    return;
+  }
+  var subs = getFiltered(prefix || "dash");
+  if (!subs.length) {
+    showBanner("errorBanner", "রপ্তানি করার মতো কোনো ডাটা পাওয়া যায়নি।");
+    return;
+  }
+  
+  var data = [];
+  // Exact 9 columns as requested by the user:
+  data.push([
+    "ক্র. নং",
+    "বৃক্ষরোপণের জেলা,উপজেলা,ইউনিয়ন ও গ্রামের নাম",
+    "রোপণকৃত বৃক্ষের প্রজাতির নাম",
+    "রোপণকৃত বৃক্ষের সংখ্যা",
+    "বৃক্ষরোপণের তারিখ",
+    "বৃক্ষরোপণের সুনির্দিষ্ট এলাকা (জিওغرافিক্যাল কোঅর্ডিনেটসহ)",
+    "পরিচর্যাকানীর নাম ও ফোন নম্বর",
+    "মনিটরিং অফিসারের নাম ও ফোন নম্বর",
+    "মন্তব্য"
+  ]);
+
+  // Index numbering line requested by the user
+  data.push([
+    "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"
+  ]);
+
+  var rowIndex = 1;
+  subs.forEach(function(s) {
+    var pDate = s.plantingDate || (s.submittedAt ? s.submittedAt.slice(0, 10) : "");
+    
+    // Combine district, upazila, and Union & Village / address as requested
+    var fullLocation = "জেলা: " + s.district + ", উপজেলা: " + s.upazila + (s.address ? ", অবস্থান/গ্রাম: " + s.address : "");
+    var geoLoc = s.geoLocation || "উল্লেখ নেই";
+    
+    // Caretaker and Planter info
+    var caretakerInfo = "";
+    if (s.caretakerName) {
+      caretakerInfo = s.caretakerName + (s.caretakerMobile ? " (" + s.caretakerMobile + ")" : "");
+    } else {
+      caretakerInfo = s.nurseryName + (s.mobile ? " (" + s.mobile + ")" : "");
+    }
+    
+    var officerInfo = caretakerInfo;
+    var remarks = s.remarks || "";
+
+    var has = (s.fruitSeedlings && s.fruitSeedlings.length || 0) + 
+              (s.forestSeedlings && s.forestSeedlings.length || 0) + 
+              (s.medicinalSeedlings && s.medicinalSeedlings.length || 0);
+
+    if (!has) {
+      data.push([
+        rowIndex++,
+        fullLocation,
+        "কোনো চারা রোপণ বিবরণী নেই",
+        0,
+        pDate,
+        geoLoc,
+        caretakerInfo,
+        officerInfo,
+        remarks
+      ]);
+    } else {
+      CATEGORIES.forEach(function(cat) {
+        (s[cat.key] || []).forEach(function(e) {
+          var countVal = (parseInt(e.count) || 0) + (parseInt(e.graftingCount) || 0);
+          data.push([
+            rowIndex++,
+            fullLocation,
+            e.name || "নামহীন প্রজাতি (" + cat.label + ")",
+            countVal,
+            pDate,
+            geoLoc,
+            caretakerInfo,
+            officerInfo,
+            remarks
+          ]);
+        });
+      });
+    }
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(data);
+  ws["!cols"] = [
+    {wch:8}, {wch:48}, {wch:25}, {wch:12}, {wch:15}, {wch:25}, {wch:30}, {wch:30}, {wch:25}
+  ];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "বৃক্ষরোপণ_সরকারি_ছক");
+  XLSX.writeFile(wb, "plantation_official_sheet_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  showBanner("successBanner", "সরকারি ছকে এক্সেল সফলভাবে ডাউনলোড হয়েছে!");
+  setTimeout(function() { hideBanner("successBanner"); }, 3000);
 };
 

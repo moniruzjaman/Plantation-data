@@ -15,7 +15,24 @@ window.buildSeedlingHTML=buildSeedlingHTML;
 
 function collectSeedlingsFromDOM(containerId){
 var result={};
-CATEGORIES.forEach(function(cat,ci){var c=document.getElementById(containerId+"_"+cat.key);if(!c)return;result[cat.key]=Array.from(c.querySelectorAll("[data-type='"+cat.key+"']")).map(function(card){var inp=card.querySelectorAll("input,select");return{name:(inp[0]&&inp[0].value||"").trim(),age:(inp[1]&&inp[1].value||"").trim(),count:(inp[2]&&inp[2].value||"0").trim(),graftingCount:(inp[3]&&inp[3].value||"0").trim()}})});
+CATEGORIES.forEach(function(cat,ci){
+  var c=document.getElementById(containerId+"_"+cat.key);
+  if(!c)return;
+  var items=Array.from(c.querySelectorAll("[data-type='"+cat.key+"']")).map(function(card){
+    var inp=card.querySelectorAll("input,select");
+    return{
+      name:(inp[0]&&inp[0].value||"").trim(),
+      age:(inp[1]&&inp[1].value||"").trim(),
+      count:(inp[2]&&inp[2].value||"0").trim(),
+      graftingCount:(inp[3]&&inp[3].value||"0").trim()
+    };
+  });
+  result[cat.key]=items.filter(function(item){
+    var cnt=parseInt(item.count)||0;
+    var grf=parseInt(item.graftingCount)||0;
+    return item.name!==""||item.age!==""||cnt>0||grf>0;
+  });
+});
 return result;
 }
 
@@ -68,6 +85,8 @@ caretakerName:(document.getElementById(prefix+"CaretakerName")&&document.getElem
 caretakerMobile:(document.getElementById(prefix+"CaretakerMobile")&&document.getElementById(prefix+"CaretakerMobile").value.trim())||"",
 address:(document.getElementById(prefix+"Address")&&document.getElementById(prefix+"Address").value.trim())||"",
 geoLocation:(document.getElementById(prefix+"Geo")&&document.getElementById(prefix+"Geo").value.trim())||"",
+officerName:(document.getElementById(prefix+"CaretakerName")&&document.getElementById(prefix+"CaretakerName").value.trim())||"",
+remarks:(document.getElementById(prefix+"Remarks")&&document.getElementById(prefix+"Remarks").value.trim())||"",
 plantingDate:pDateVal,
 submittedAt:new Date().toISOString()
 };
