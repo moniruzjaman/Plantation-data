@@ -164,6 +164,56 @@ window.renderMap = function() {
   }
 };
 
+// ── PWA Direct App Install & Iframe Detect ──
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  var installBanner = document.getElementById('pwaInstallBanner');
+  if (installBanner) {
+    installBanner.classList.remove('hidden');
+  }
+});
+
+window.triggerPWAInstall = function() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(choiceResult) {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the PWA install prompt');
+      } else {
+        console.log('User dismissed the PWA install prompt');
+      }
+      deferredPrompt = null;
+      var installBanner = document.getElementById('pwaInstallBanner');
+      if (installBanner) installBanner.classList.add('hidden');
+    });
+  } else {
+    alert("আপনার ফোন বা ব্রাউজার থেকে সরাসরি অ্যাপ হিসেবে ইনস্টল করতে ব্রাউজারের থ্রি-ডট (triple-dot) বা শেয়ার মেনুতে গিয়ে 'Add to Home Screen' অথবা 'Install' এ ক্লিক করুন।");
+  }
+};
+
+function checkIframeAndPrompt() {
+  var isLinkedIframe = false;
+  try {
+    isLinkedIframe = window.self !== window.top;
+  } catch (e) {
+    isLinkedIframe = true;
+  }
+  if (isLinkedIframe) {
+    var iframeBanner = document.getElementById('pwaIframeBanner');
+    if (iframeBanner) iframeBanner.classList.remove('hidden');
+  } else {
+    setTimeout(function() {
+      var installBanner = document.getElementById('pwaInstallBanner');
+      // If we got the beforeinstallprompt, show the banner, otherwise show for awareness
+      if (installBanner) {
+        installBanner.classList.remove('hidden');
+      }
+    }, 2000);
+  }
+}
+
 // ── Init ──
 try{
 populateRegionDD(document.getElementById("fRegion"));
@@ -172,6 +222,7 @@ populateRegionDD(document.getElementById("mapRegion"));
 populateRegionDD(document.getElementById("adminRegion"));
 document.getElementById("seedlingSections").innerHTML=buildSeedlingSections("seedlingSections",null);
 fetchGeoLocation();
+checkIframeAndPrompt();
 if (window.loadSyncConfig) { window.loadSyncConfig(); }
 }catch(err){
 console.error("Init error:",err);

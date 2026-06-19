@@ -28,7 +28,8 @@
 </div>
 
 <!-- ==================== FOOTER ==================== -->
-<footer class="text-green-100 text-center py-3 px-4 text-xs sm:text-sm mt-auto no-print" style="background:#14532d;color:#dcfce7">
-<p>কৃষি সম্প্রসারণ অধিদপ্তর | গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
+<footer class="text-green-100 text-center py-4 px-4 text-xs sm:text-sm mt-auto no-print" style="background:#14532d;color:#dcfce7">
+<p class="mb-1">কৃষি সম্প্রসারণ অধিদপ্তর | গণপ্রজাতন্ত্রী বাংলাদেশ সরকার</p>
+<p class="mb-1 text-green-300" style="color:#a7f3d0">সাপোর্ট ইমেইল: <a href="mailto:krishiailive@gmail.com" class="underline hover:text-white transition">krishiailive@gmail.com</a></p>
 <p class="text-green-300 text-xs mt-0.5" style="color:#86efac">&copy; ২০২৬ সর্বস্বত্ব সংরক্ষিত</p>
 </footer>
