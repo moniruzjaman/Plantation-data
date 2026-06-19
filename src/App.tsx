@@ -8,12 +8,14 @@ import GeolocationIndicator from './components/GeolocationIndicator';
 import WelcomeModal from './components/WelcomeModal';
 import PWAInstaller from './components/PWAInstaller';
 import SyncToast from './components/SyncToast';
+import OfflinePlantationDashboard from './components/OfflinePlantationDashboard';
 
 export default function App() {
   return (
     <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <NetworkStatus />
       <GeolocationIndicator />
+      <OfflinePlantationDashboard />
       <WelcomeModal />
       <PWAInstaller />
       <SyncToast />
