@@ -7,6 +7,7 @@ import NetworkStatus from './components/NetworkStatus';
 import GeolocationIndicator from './components/GeolocationIndicator';
 import WelcomeModal from './components/WelcomeModal';
 import PWAInstaller from './components/PWAInstaller';
+import SyncToast from './components/SyncToast';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
       <GeolocationIndicator />
       <WelcomeModal />
       <PWAInstaller />
+      <SyncToast />
       <iframe 
         src="legacy-nursery.html" 
         style={{ display: 'block', width: '100%', height: '100%', border: 'none' }}
