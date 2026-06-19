@@ -3,6 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moniruzjaman/plantation-tracker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/moniruzjaman/plantation-tracker/issues"
+  },
+  "homepage": "https://github.com/moniruzjaman/plantation-tracker#readme",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "node fix-gradle-wrapper.js && node chmod-gradlew.js && node download-and-process-logo.js && node map.js && vite build",

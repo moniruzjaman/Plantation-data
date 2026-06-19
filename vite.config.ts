@@ -46,7 +46,7 @@ export default defineConfig(({mode}) => {
           ]
         },
         manifest: {
-          name: 'বৃক্ষরোপণ ট্র্যাকার (Plantation Tracker)',
+          name: 'plantation-tracker',
           short_name: 'বৃক্ষরোপণ ট্র্যাকার',
           description: '“০৫ বছরে ২৫ কোটি বৃক্ষরোপণ” কর্মসূচির আওতাভুক্ত তথ্য সংগ্রহ ও ট্র্যাকিং অ্যাপ',
           theme_color: '#15803d',
