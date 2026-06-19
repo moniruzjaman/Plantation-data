@@ -14,7 +14,17 @@ import {
   HardDrive
 } from 'lucide-react';
 
-export default function NetworkStatus() {
+export interface NetworkStatusData {
+  isOnline: boolean;
+  swState: 'active' | 'installing' | 'waiting' | 'uninstalled' | 'unsupported';
+  storageEstimate: { used: string; total: string; percent: number } | null;
+}
+
+interface NetworkStatusProps {
+  onStateChange?: (data: NetworkStatusData) => void;
+}
+
+export default function NetworkStatus({ onStateChange }: NetworkStatusProps = {}) {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
@@ -22,6 +32,13 @@ export default function NetworkStatus() {
   const [swState, setSwState] = useState<'active' | 'installing' | 'waiting' | 'uninstalled' | 'unsupported'>('unsupported');
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [storageEstimate, setStorageEstimate] = useState<{ used: string; total: string; percent: number } | null>(null);
+
+  // Invoke callback when state transitions
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange({ isOnline, swState, storageEstimate });
+    }
+  }, [isOnline, swState, storageEstimate, onStateChange]);
 
   useEffect(() => {
     // 1. Connection Event Listeners
@@ -98,7 +115,7 @@ export default function NetworkStatus() {
   }, [isExpanded]);
 
   return (
-    <div className="absolute top-4 right-4 z-50 pointer-events-none font-sans" id="networkStatusContainer">
+    <div className="hidden md:block absolute top-4 right-4 z-50 pointer-events-none font-sans" id="networkStatusContainer">
       <div className="flex flex-col items-end gap-2 pointer-events-auto">
         {/* Connection status pill/badge */}
         <motion.div

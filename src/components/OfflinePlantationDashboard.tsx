@@ -15,14 +15,14 @@ import {
   Globe2
 } from 'lucide-react';
 
-interface Seedling {
+export interface Seedling {
   name: string;
   age: string;
   count: string | number;
   graftingCount: string | number;
 }
 
-interface Submission {
+export interface Submission {
   id: string;
   region: string;
   district: string;
@@ -41,11 +41,22 @@ interface Submission {
   medicinalSeedlings?: Seedling[];
 }
 
-export default function OfflinePlantationDashboard() {
+interface OfflinePlantationDashboardProps {
+  onStateChange?: (submissions: Submission[]) => void;
+}
+
+export default function OfflinePlantationDashboard({ onStateChange }: OfflinePlantationDashboardProps = {}) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [language, setLanguage] = useState<'bn' | 'en'>('bn');
   const [lastUpdated, setLastUpdated] = useState<string>('');
+
+  // Invoke callback when submissions list updates
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange(submissions);
+    }
+  }, [submissions, onStateChange]);
 
   // Fetch submissions from localStorage
   const fetchSubmissions = () => {
@@ -154,7 +165,7 @@ export default function OfflinePlantationDashboard() {
   };
 
   return (
-    <div className="absolute top-4 left-4 z-50 pointer-events-none font-sans" id="offlineDashboardContainer">
+    <div className="hidden md:block absolute top-4 left-4 z-50 pointer-events-none font-sans" id="offlineDashboardContainer">
       <div className="flex flex-col items-start gap-2 pointer-events-auto">
         
         {/* Compact Toggle Button */}

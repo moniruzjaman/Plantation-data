@@ -41,7 +41,7 @@ export default function WelcomeModal() {
       <button
         onClick={handleOpenHelp}
         id="btnShowWelcomeHelp"
-        className="absolute top-[112px] right-4 z-45 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 border border-gray-150 hover:bg-gray-50 shadow-md text-gray-600 font-medium text-xs cursor-pointer transition-all hover:scale-102 pointer-events-auto"
+        className="hidden md:flex absolute top-[112px] right-4 z-45 items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 border border-gray-150 hover:bg-gray-50 shadow-md text-gray-600 font-medium text-xs cursor-pointer transition-all hover:scale-102 pointer-events-auto"
         title="অ্যাপ্লিকেশন নির্দেশিকা"
       >
         <HelpCircle className="w-4 h-4 text-green-600" />

@@ -13,7 +13,7 @@ import {
   Check
 } from 'lucide-react';
 
-interface GeoState {
+export interface GeoState {
   coords: {
     latitude: number;
     longitude: number;
@@ -25,13 +25,24 @@ interface GeoState {
   permissionState: PermissionState | 'loading' | 'unknown';
 }
 
-export default function GeolocationIndicator() {
+interface GeolocationIndicatorProps {
+  onStateChange?: (state: GeoState) => void;
+}
+
+export default function GeolocationIndicator({ onStateChange }: GeolocationIndicatorProps = {}) {
   const [geo, setGeo] = useState<GeoState>({
     coords: null,
     error: null,
     loading: true,
     permissionState: 'loading'
   });
+
+  // Invoke callback when GPS state updates
+  useEffect(() => {
+    if (onStateChange) {
+      onStateChange(geo);
+    }
+  }, [geo, onStateChange]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -247,7 +258,7 @@ export default function GeolocationIndicator() {
   };
 
   return (
-    <div className="absolute top-16 right-4 z-50 pointer-events-none font-sans" id="geolocationIndicatorContainer">
+    <div className="hidden md:block absolute top-16 right-4 z-50 pointer-events-none font-sans" id="geolocationIndicatorContainer">
       <div className="flex flex-col items-end gap-2 pointer-events-auto">
         {/* Floating Toggle Pill */}
         <motion.button
