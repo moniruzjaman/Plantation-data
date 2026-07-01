@@ -5,13 +5,45 @@ import path from 'path';
 const ANDROID_RES_DIR = 'android/app/src/main/res';
 
 // Icon dimensions for each density
-const DENSITIES = {
+const ICON_DENSITIES = {
   'mipmap-ldpi': 36,
   'mipmap-mdpi': 48,
   'mipmap-hdpi': 72,
   'mipmap-xhdpi': 96,
   'mipmap-xxhdpi': 144,
   'mipmap-xxxhdpi': 192
+};
+
+// Splash screen dimensions (portrait and landscape)
+const SPLASH_DENSITIES = {
+  'drawable-port-ldpi': { width: 320, height: 470 },
+  'drawable-port-mdpi': { width: 480, height: 710 },
+  'drawable-port-hdpi': { width: 720, height: 1060 },
+  'drawable-port-xhdpi': { width: 1080, height: 1420 },
+  'drawable-port-xxhdpi': { width: 1620, height: 2130 },
+  'drawable-port-xxxhdpi': { width: 2430, height: 3200 },
+  'drawable-land-ldpi': { width: 470, height: 320 },
+  'drawable-land-mdpi': { width: 710, height: 480 },
+  'drawable-land-hdpi': { width: 1060, height: 720 },
+  'drawable-land-xhdpi': { width: 1420, height: 1080 },
+  'drawable-land-xxhdpi': { width: 2130, height: 1620 },
+  'drawable-land-xxxhdpi': { width: 3200, height: 2430 },
+  // Night mode variants
+  'drawable-port-night-ldpi': { width: 320, height: 470 },
+  'drawable-port-night-mdpi': { width: 480, height: 710 },
+  'drawable-port-night-hdpi': { width: 720, height: 1060 },
+  'drawable-port-night-xhdpi': { width: 1080, height: 1420 },
+  'drawable-port-night-xxhdpi': { width: 1620, height: 2130 },
+  'drawable-port-night-xxxhdpi': { width: 2430, height: 3200 },
+  'drawable-land-night-ldpi': { width: 470, height: 320 },
+  'drawable-land-night-mdpi': { width: 710, height: 480 },
+  'drawable-land-night-hdpi': { width: 1060, height: 720 },
+  'drawable-land-night-xhdpi': { width: 1420, height: 1080 },
+  'drawable-land-night-xxhdpi': { width: 2130, height: 1620 },
+  'drawable-land-night-xxxhdpi': { width: 3200, height: 2430 },
+  // Generic drawable (no density qualifier)
+  'drawable': { width: 480, height: 710 },
+  'drawable-night': { width: 480, height: 710 }
 };
 
 // Icon types to generate
@@ -30,10 +62,6 @@ async function generateIcon(density, size, iconType) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  
-  // Create a simple but valid PNG
-  // For launcher icons, use a green circle with tree emoji
-  // For background, use solid green
   
   if (iconType === 'ic_launcher_background') {
     // Solid green background
@@ -77,10 +105,44 @@ async function generateIcon(density, size, iconType) {
   console.log(`✅ Generated ${filepath} (${size}x${size})`);
 }
 
+async function generateSplash(density, dimensions, isNight = false) {
+  const dir = path.join(ANDROID_RES_DIR, density);
+  const filepath = path.join(dir, 'splash.png');
+  
+  // Ensure directory exists
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  
+  const { width, height } = dimensions;
+  
+  // Background color (green for day, darker green for night)
+  const bgColor = isNight 
+    ? { r: 5, g: 150, b: 105 } // Darker green for night mode
+    : { r: 16, g: 185, b: 129 }; // Regular green for day mode
+  
+  // Create splash screen with tree emoji
+  const svg = `
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="${width}" height="${height}" fill="rgb(${bgColor.r},${bgColor.g},${bgColor.b})"/>
+      <text x="50%" y="50%" font-size="${Math.min(width, height) * 0.4}" text-anchor="middle" dominant-baseline="central" fill="white">🌳</text>
+      <text x="50%" y="${height * 0.75}" font-size="${Math.min(width, height) * 0.05}" text-anchor="middle" fill="white" font-family="sans-serif">বৃক্ষরোপণ কর্মসূচি</text>
+    </svg>
+  `;
+  
+  await sharp(Buffer.from(svg))
+    .resize(width, height)
+    .png()
+    .toFile(filepath);
+  
+  console.log(`✅ Generated ${filepath} (${width}x${height})`);
+}
+
 async function main() {
   console.log('🎨 Generating Android launcher icons...\n');
   
-  for (const [density, size] of Object.entries(DENSITIES)) {
+  // Generate launcher icons
+  for (const [density, size] of Object.entries(ICON_DENSITIES)) {
     console.log(`\n📱 Processing ${density} (${size}x${size}):`);
     
     for (const iconType of ICON_TYPES) {
@@ -92,7 +154,21 @@ async function main() {
     }
   }
   
-  console.log('\n✨ All Android icons generated successfully!');
+  console.log('\n\n🎨 Generating Android splash screens...\n');
+  
+  // Generate splash screens
+  for (const [density, dimensions] of Object.entries(SPLASH_DENSITIES)) {
+    console.log(`\n📱 Processing ${density} (${dimensions.width}x${dimensions.height}):`);
+    
+    try {
+      const isNight = density.includes('night');
+      await generateSplash(density, dimensions, isNight);
+    } catch (error) {
+      console.error(`❌ Error generating splash for ${density}:`, error.message);
+    }
+  }
+  
+  console.log('\n✨ All Android icons and splash screens generated successfully!');
 }
 
 main().catch(error => {
