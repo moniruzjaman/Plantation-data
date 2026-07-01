@@ -47,9 +47,41 @@ jobs:
         run: |
           mkdir -p android/gradle/wrapper
           curl -L -o android/gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar
+          echo "✅ gradle-wrapper.jar restored"
+          ls -lh android/gradle/wrapper/gradle-wrapper.jar
 
       - name: Set Gradlew Executable
         run: chmod +x android/gradlew
+
+      # 5c. Ensure AndroidX is enabled in gradle.properties
+      - name: Ensure AndroidX is Enabled
+        run: |
+          cd android
+          
+          # Check if gradle.properties exists
+          if [ ! -f gradle.properties ]; then
+            echo "📝 Creating gradle.properties..."
+            touch gradle.properties
+          fi
+          
+          # Check and add AndroidX if missing
+          if ! grep -q "android.useAndroidX" gradle.properties; then
+            echo "🔧 Adding AndroidX configuration..."
+            cat >> gradle.properties << 'EOF'
+
+          # AndroidX package structure (auto-added by CI)
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+          else
+            echo "✅ AndroidX already configured"
+          fi
+          
+          # Verify
+          echo "📋 Current gradle.properties:"
+          cat gradle.properties
+          echo ""
+          grep -E "android\.(useAndroidX|enableJetifier)" gradle.properties || echo "⚠️  Warning: AndroidX not found"
 
       # 6. Generate or Decode Signing Keystore
       - name: Setup Signing Keystore
@@ -106,7 +138,10 @@ jobs:
           fi
           
           # Create gradle.properties with signing config
-          cat > android/gradle.properties << EOF
+          cd android
+          cat >> gradle.properties << EOF
+          
+          # Release signing configuration
           RELEASE_STORE_FILE=release.jks
           RELEASE_STORE_PASSWORD=$STORE_PASS
           RELEASE_KEY_ALIAS=$KEY_ALIAS
@@ -144,7 +179,12 @@ jobs:
         if: always()
         run: |
           rm -f android/app/release.jks
-          rm -f android/gradle.properties
+          # Remove signing config but keep AndroidX
+          cd android
+          if [ -f gradle.properties ]; then
+            grep -v "RELEASE_STORE_FILE\|RELEASE_STORE_PASSWORD\|RELEASE_KEY_ALIAS\|RELEASE_KEY_PASSWORD" gradle.properties > gradle.properties.tmp
+            mv gradle.properties.tmp gradle.properties
+          fi
           echo "🧹 Cleaned up keystore and signing configuration"
 
       # 11. Upload Release AAB
@@ -168,7 +208,18 @@ jobs:
         if: steps.keystore.outputs.keystore_source == 'generated'
         run: |
           mkdir -p keystore-export
-          cp android/app/release.jks keystore-export/ 2>/dev/null || echo "Keystore already cleaned"
+          
+          # Recreate keystore for export (since we cleaned it up)
+          keytool -genkeypair \
+            -v \
+            -keystore keystore-export/release.jks \
+            -alias ${{ steps.keystore.outputs.generated_alias }} \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "${{ steps.keystore.outputs.generated_store_pass }}" \
+            -keypass "${{ steps.keystore.outputs.generated_alias_pass }}" \
+            -dname "CN=Plantation Tracker, OU=DAE, O=KrishiAI, L=Dhaka, ST=Dhaka, C=BD"
           
           # Create credentials file
           cat > keystore-export/keystore-credentials.txt << EOF
