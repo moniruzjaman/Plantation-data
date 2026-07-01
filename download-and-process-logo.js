@@ -5,154 +5,234 @@ import sharp from 'sharp';
 
 const SVG_URL = 'https://upload.wikimedia.org/wikipedia/commons/8/84/Government_Seal_of_Bangladesh.svg';
 const PUBLIC_DIR = path.resolve('public');
+const FALLBACK_DIR = path.resolve('assets/fallback-logos');
 
-function fetchSvg(url) {
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [2000, 5000, 10000]; // Exponential backoff
+
+// Check if all required files already exist
+function allFilesExist() {
+  const requiredFiles = [
+    'logo.svg',
+    'logo.png',
+    'apple-touch-icon.png',
+    'og-image.png',
+    'og-image-large.png',
+    'favicon-32x32.png',
+    'favicon-16x16.png',
+    'favicon.ico',
+    'pwa-192x192.svg',
+    'pwa-512x512.svg'
+  ];
+  
+  return requiredFiles.every(file => fs.existsSync(path.join(PUBLIC_DIR, file)));
+}
+
+// Fetch SVG with retry logic
+function fetchSvg(url, attempt = 1) {
   return new Promise((resolve, reject) => {
+    console.log(`📥 Attempt ${attempt}/${MAX_RETRIES}: Downloading from ${url}`);
+    
     const options = {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
+        'User-Agent': 'PlantationTracker/1.0 (Educational Project; mailto:admin@example.com)',
+        'Accept': 'image/svg+xml,*/*'
       }
     };
+    
     https.get(url, options, (res) => {
+      // Handle redirects
+      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+        console.log(`↪️  Redirecting to: ${res.headers.location}`);
+        fetchSvg(res.headers.location, attempt).then(resolve).catch(reject);
+        return;
+      }
+      
+      // Handle rate limiting with retry
+      if (res.statusCode === 429) {
+        const retryAfter = parseInt(res.headers['retry-after'] || '5');
+        console.warn(`⚠️  Rate limited (429). Retry-After: ${retryAfter}s`);
+        
+        if (attempt < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[attempt - 1] || retryAfter * 1000;
+          console.log(`⏳ Waiting ${delay/1000}s before retry...`);
+          setTimeout(() => {
+            fetchSvg(url, attempt + 1).then(resolve).catch(reject);
+          }, delay);
+        } else {
+          reject(new Error(`Rate limited after ${MAX_RETRIES} attempts`));
+        }
+        return;
+      }
+      
       if (res.statusCode !== 200) {
         reject(new Error(`Failed to download SVG: Status ${res.statusCode}`));
         return;
       }
+      
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => { resolve(data); });
-    }).on('error', reject);
+    }).on('error', (err) => {
+      if (attempt < MAX_RETRIES) {
+        console.warn(`⚠️  Network error: ${err.message}. Retrying...`);
+        setTimeout(() => fetchSvg(url, attempt + 1).then(resolve).catch(reject), RETRY_DELAYS[attempt - 1]);
+      } else {
+        reject(err);
+      }
+    });
   });
 }
 
-async function run() {
-  try {
-    console.log('Downloading Bangladesh Government Seal SVG...');
-    const svgContent = await fetchSvg(SVG_URL);
+// Create a simple placeholder SVG
+function createPlaceholderSVG() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="url(#grad)" stroke="#047857" stroke-width="4"/>
+  <text x="100" y="115" font-size="80" text-anchor="middle" fill="white" font-family="Arial, sans-serif">🌳</text>
+  <text x="100" y="160" font-size="14" text-anchor="middle" fill="white" font-family="Arial, sans-serif">DAE</text>
+</svg>`;
+}
+
+async function processIcons(svgContent) {
+  // Ensure public folder exists
+  if (!fs.existsSync(PUBLIC_DIR)) {
+    fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+  }
+  
+  // 1. Save logo.svg
+  const logoSvgPath = path.join(PUBLIC_DIR, 'logo.svg');
+  fs.writeFileSync(logoSvgPath, svgContent);
+  console.log('✅ Saved public/logo.svg');
+
+  // 2. Clear old PWA SVGs to match
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'pwa-192x192.svg'), svgContent);
+  fs.writeFileSync(path.join(PUBLIC_DIR, 'pwa-512x512.svg'), svgContent);
+  console.log('✅ Created public/pwa-192x192.svg and public/pwa-512x512.svg');
+
+  const svgBuffer = Buffer.from(svgContent);
+
+  // 3. Create public/logo.png (512x512)
+  const logoBgCircle = Buffer.from('<svg width="512" height="512"><circle cx="256" cy="256" r="256" fill="#ffffff"/></svg>');
+  const logoSealResized = await sharp(svgBuffer).resize(460, 460).png().toBuffer();
+  await sharp(logoBgCircle)
+    .composite([{ input: logoSealResized, gravity: 'center' }])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'logo.png'));
+  console.log('✅ Created public/logo.png');
+
+  // 4. Create apple-touch-icon.png (180x180)
+  const appleBgSquare = Buffer.from('<svg width="180" height="180"><rect width="180" height="180" fill="#ffffff"/></svg>');
+  const appleSealResized = await sharp(svgBuffer).resize(150, 150).png().toBuffer();
+  await sharp(appleBgSquare)
+    .composite([{ input: appleSealResized, gravity: 'center' }])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'apple-touch-icon.png'));
+  console.log('✅ Created public/apple-touch-icon.png');
+
+  // 5. Create og-image.png (512x512)
+  const ogBgSquare = Buffer.from('<svg width="512" height="512"><rect width="512" height="512" fill="#ffffff"/></svg>');
+  const ogSealResized = await sharp(svgBuffer).resize(450, 450).png().toBuffer();
+  await sharp(ogBgSquare)
+    .composite([{ input: ogSealResized, gravity: 'center' }])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'og-image.png'));
+  console.log('✅ Created public/og-image.png');
+
+  // 6. Create favicon-32x32.png
+  const fav32BgCircle = Buffer.from('<svg width="32" height="32"><circle cx="16" cy="16" r="16" fill="#ffffff"/></svg>');
+  const fav32SealResized = await sharp(svgBuffer).resize(28, 28).png().toBuffer();
+  await sharp(fav32BgCircle)
+    .composite([{ input: fav32SealResized, gravity: 'center' }])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'favicon-32x32.png'));
+  console.log('✅ Created public/favicon-32x32.png');
+
+  // 6b. Create favicon.ico
+  await sharp(fav32BgCircle)
+    .composite([{ input: fav32SealResized, gravity: 'center' }])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'favicon.ico'));
+  console.log('✅ Created public/favicon.ico');
+
+  // 7. Create favicon-16x16.png
+  const fav16BgCircle = Buffer.from('<svg width="16" height="16"><circle cx="8" cy="8" r="8" fill="#ffffff"/></svg>');
+  const fav16SealResized = await sharp(svgBuffer).resize(14, 14).png().toBuffer();
+  await sharp(fav16BgCircle)
+    .composite([{ input: fav16SealResized, gravity: 'center' }])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'favicon-16x16.png'));
+  console.log('✅ Created public/favicon-16x16.png');
+
+  // 8. Create og-image-large.png (1200x630)
+  const bgLarge = await sharp({
+    create: {
+      width: 1200,
+      height: 630,
+      channels: 4,
+      background: { r: 21, g: 128, b: 61, alpha: 1 }
+    }
+  });
+
+  const backdropCircleLarge = Buffer.from('<svg width="430" height="430"><circle cx="215" cy="215" r="215" fill="#ffffff" /></svg>');
+  const sealResizedLarge = await sharp(svgBuffer).resize(400, 400).png().toBuffer();
+
+  await bgLarge
+    .composite([
+      { input: backdropCircleLarge, gravity: 'center' },
+      { input: sealResizedLarge, gravity: 'center' }
+    ])
+    .png()
+    .toFile(path.join(PUBLIC_DIR, 'og-image-large.png'));
     
-    // Ensure public folder exists
-    if (!fs.existsSync(PUBLIC_DIR)) {
-      fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+  console.log('✅ Created public/og-image-large.png');
+  console.log('✨ All icons and share assets updated successfully!');
+}
+
+async function run() {
+  // Skip if all files already exist
+  if (allFilesExist()) {
+    console.log('✨ All logo files already exist - skipping download and processing');
+    return;
+  }
+  
+  try {
+    console.log('🌿 Downloading Bangladesh Government Seal SVG...');
+    const svgContent = await fetchSvg(SVG_URL);
+    await processIcons(svgContent);
+  } catch (error) {
+    console.error('❌ Error downloading logo:', error.message);
+    
+    // Try fallback directory
+    if (fs.existsSync(path.join(FALLBACK_DIR, 'logo.svg'))) {
+      console.log('🔄 Using fallback logo from assets/fallback-logos/');
+      try {
+        const fallbackSvg = fs.readFileSync(path.join(FALLBACK_DIR, 'logo.svg'), 'utf8');
+        await processIcons(fallbackSvg);
+        return;
+      } catch (fallbackErr) {
+        console.error('❌ Fallback also failed:', fallbackErr.message);
+      }
     }
     
-    // 1. Save logo.svg
-    const logoSvgPath = path.join(PUBLIC_DIR, 'logo.svg');
-    fs.writeFileSync(logoSvgPath, svgContent);
-    console.log('Saved public/logo.svg');
-
-    // 2. Clear old PWA SVGs to match
-    fs.writeFileSync(path.join(PUBLIC_DIR, 'pwa-192x192.svg'), svgContent);
-    fs.writeFileSync(path.join(PUBLIC_DIR, 'pwa-512x512.svg'), svgContent);
-    console.log('Created public/pwa-192x192.svg and public/pwa-512x512.svg');
-
-    const svgBuffer = Buffer.from(svgContent);
-
-    // 3. Create public/logo.png (512x512) - White circle backing to avoid transparent problems anywhere
-    const logoBgCircle = Buffer.from('<svg width="512" height="512"><circle cx="256" cy="256" r="256" fill="#ffffff"/></svg>');
-    const logoSealResized = await sharp(svgBuffer)
-      .resize(460, 460)
-      .png()
-      .toBuffer();
-      
-    await sharp(logoBgCircle)
-      .composite([{ input: logoSealResized, gravity: 'center' }])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'logo.png'));
-    console.log('Created public/logo.png (with high-quality white circle backing)');
-
-    // 4. Create apple-touch-icon.png (180x180) - iOS demands solid square backgrounds
-    const appleBgSquare = Buffer.from('<svg width="180" height="180"><rect width="180" height="180" fill="#ffffff"/></svg>');
-    const appleSealResized = await sharp(svgBuffer)
-      .resize(150, 150)
-      .png()
-      .toBuffer();
-      
-    await sharp(appleBgSquare)
-      .composite([{ input: appleSealResized, gravity: 'center' }])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'apple-touch-icon.png'));
-    console.log('Created public/apple-touch-icon.png (with solid white square backdrop)');
-
-    // 5. Create og-image.png (512x512) - Solid white backing for sharing systems (dark/light themes)
-    const ogBgSquare = Buffer.from('<svg width="512" height="512"><rect width="512" height="512" fill="#ffffff"/></svg>');
-    const ogSealResized = await sharp(svgBuffer)
-      .resize(450, 450)
-      .png()
-      .toBuffer();
-      
-    await sharp(ogBgSquare)
-      .composite([{ input: ogSealResized, gravity: 'center' }])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'og-image.png'));
-    console.log('Created public/og-image.png (with standard solid contrast board)');
-
-    // 6. Create favicon-32x32.png (32x32) with white circle backdrop
-    const fav32BgCircle = Buffer.from('<svg width="32" height="32"><circle cx="16" cy="16" r="16" fill="#ffffff"/></svg>');
-    const fav32SealResized = await sharp(svgBuffer)
-      .resize(28, 28)
-      .png()
-      .toBuffer();
-    await sharp(fav32BgCircle)
-      .composite([{ input: fav32SealResized, gravity: 'center' }])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'favicon-32x32.png'));
-    console.log('Created public/favicon-32x32.png (high-visibility circular)');
-
-    // 6b. Also make favicon.ico of identical content for maximum fallback coverage in production hosts like Vercel
-    await sharp(fav32BgCircle)
-      .composite([{ input: fav32SealResized, gravity: 'center' }])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'favicon.ico'));
-    console.log('Created public/favicon.ico');
-
-    // 7. Create favicon-16x16.png (16x16) with white circle backdrop
-    const fav16BgCircle = Buffer.from('<svg width="16" height="16"><circle cx="8" cy="8" r="8" fill="#ffffff"/></svg>');
-    const fav16SealResized = await sharp(svgBuffer)
-      .resize(14, 14)
-      .png()
-      .toBuffer();
-    await sharp(fav16BgCircle)
-      .composite([{ input: fav16SealResized, gravity: 'center' }])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'favicon-16x16.png'));
-    console.log('Created public/favicon-16x16.png (high-visibility circular)');
-
-    // 8. Create og-image-large.png (1200x630) - beautifully padded and centered with a crisp white circular backdrop
-    // to look extremely professional on social shares (WhatsApp/Messenger) and avoid green text blending onto green background
-    const bgLarge = await sharp({
-      create: {
-        width: 1200,
-        height: 630,
-        channels: 4,
-        background: { r: 21, g: 128, b: 61, alpha: 1 } // Elegant green background matching our theme #15803d
-      }
-    });
-
-    const backdropCircleLarge = Buffer.from('<svg width="430" height="430"><circle cx="215" cy="215" r="215" fill="#ffffff" /></svg>');
-    const sealResizedLarge = await sharp(svgBuffer)
-      .resize(400, 400)
-      .png()
-      .toBuffer();
-
-    await bgLarge
-      .composite([
-        { 
-          input: backdropCircleLarge,
-          gravity: 'center'
-        },
-        { 
-          input: sealResizedLarge,
-          gravity: 'center'
-        }
-      ])
-      .png()
-      .toFile(path.join(PUBLIC_DIR, 'og-image-large.png'));
-      
-    console.log('Created public/og-image-large.png (with standalone green layout & white contrast backdrop)');
-    console.log('All icons and share assets updated successfully with flawless font curves and contrasts!');
-  } catch (error) {
-    console.error('Error downloading or processing logo:', error);
-    process.exit(1);
+    // Create placeholder as last resort
+    console.log('🎨 Creating placeholder logo...');
+    try {
+      const placeholderSvg = createPlaceholderSVG();
+      await processIcons(placeholderSvg);
+      console.log('⚠️  Build will continue with placeholder logo');
+    } catch (placeholderErr) {
+      console.error('❌ Could not create placeholder:', placeholderErr.message);
+      // Don't exit with error - let build continue
+      console.log('⚠️  Build will continue without logo assets');
+    }
   }
 }
 
